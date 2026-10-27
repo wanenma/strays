@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -10,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 type CatPost = {
   id: string;
@@ -53,6 +55,31 @@ const SAMPLE_POSTS: CatPost[] = [
 export default function HomeScreen() {
   const [myPhotos, setMyPhotos] = useState<string[]>([]);
   const [likedPosts, setLikedPosts] = useState<string[]>([]);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const [backendMessage, setBackendMessage] = useState('Connecting...');
+
+  useEffect(() => {
+  async function testConnection() {
+    const { data, error } = await supabase
+      .from('connection_test')
+      .select('message')
+      .limit(1);
+
+    if (error) {
+      setBackendMessage(`Error: ${error.message}`);
+      return;
+    }
+
+    setBackendMessage(
+      data?.[0]?.message ?? 'Connected, but no message found.'
+    );
+  }
+
+  testConnection();
+}, []);
 
   const toggleLike = (id: string) => {
     setLikedPosts((current) =>
@@ -62,12 +89,114 @@ export default function HomeScreen() {
     );
   };
 
-  const handleCameraPress = () => {
-    // We'll connect this button to the real device camera next.
-    setMyPhotos((current) =>
-      current.length >= 2 ? current : [...current, 'demo-photo'],
-    );
-  };
+  const takePhoto = async () => {
+  const photo = await cameraRef.current?.takePictureAsync();
+
+  if (photo?.uri) {
+    setPhotoUri(photo.uri);
+    setCameraOpen(false);
+  }
+};
+
+  const handleCameraPress = async () => {
+  if (myPhotos.length >= 2) {
+    return;
+  }
+
+  if (!permission?.granted) {
+    const result = await requestPermission();
+
+    if (!result.granted) {
+      return;
+    }
+  }
+
+  setCameraOpen(true);
+};
+  if (cameraOpen) {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
+      <CameraView
+        ref={cameraRef}
+        style={{ flex: 1 }}
+        facing="back"
+      />
+
+      <Pressable
+        onPress={() => setCameraOpen(false)}
+        style={{
+          position: 'absolute',
+          top: 60,
+          left: 20,
+          padding: 12,
+          backgroundColor: 'white',
+          borderRadius: 12,
+        }}
+      >
+        <Text>Close camera</Text>
+      </Pressable>
+      <Pressable
+  onPress={takePhoto}
+  style={{
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'white',
+    borderWidth: 6,
+    borderColor: '#A5B99A',
+  }}
+/>
+    </SafeAreaView>
+  );
+  } 
+
+  if (photoUri) {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'black' }}>
+      <Image
+        source={{ uri: photoUri }}
+        style={{ flex: 1 }}
+        resizeMode="contain"
+      />
+
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          padding: 20,
+          backgroundColor: '#111',
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            setPhotoUri(null);
+            setCameraOpen(true);
+          }}
+          style={{ padding: 16 }}
+        >
+          <Text style={{ color: 'white' }}>Retake</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
+  if (photoUri && myPhotos.length < 2) {
+    setMyPhotos([...myPhotos, photoUri]);
+  }
+
+  setPhotoUri(null);
+}}
+          style={{ padding: 16 }}
+        >
+          <Text style={{ color: 'white' }}>Use Photo</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -115,12 +244,12 @@ export default function HomeScreen() {
           >
             {myPhotos.map((photo, index) => (
               <View key={`${photo}-${index}`} style={styles.myPhotoCard}>
-                <View style={styles.myPhotoPlaceholder}>
-                  <Text style={styles.myPhotoEmoji}>🐈</Text>
-                </View>
-                <Text style={styles.myPhotoLabel}>
-                  Today's stray #{index + 1}
-                </Text>
+                <Image
+                  source={{ uri: photo }}
+                  style={styles.myPhotoImage}
+                  resizeMode="cover"
+                />
+              
               </View>
             ))}
             {myPhotos.length < 2 && (
@@ -358,15 +487,17 @@ cameraIcon: {
     marginBottom: 26,
   },
   myPhotoCard: {
-    width: 132,
-  },
-  myPhotoPlaceholder: {
-    height: 112,
-    borderRadius: 16,
-    backgroundColor: '#E4EBDD',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  width: 120,
+  height:185,
+  borderRadius: 16,
+  overflow: 'hidden',
+  backgroundColor: '#E1E9DC',
+},
+
+myPhotoImage: {
+  width: '100%',
+  height: '100%',
+},
   myPhotoEmoji: {
     fontSize: 38,
   },
