@@ -1,5 +1,6 @@
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Image,
@@ -11,7 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 type CatPost = {
   id: string;
@@ -60,6 +61,7 @@ export default function HomeScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const [backendMessage, setBackendMessage] = useState('Connecting...');
+  const router = useRouter();
 
   useEffect(() => {
   async function testConnection() {
@@ -226,7 +228,7 @@ export default function HomeScreen() {
             <Text style={styles.cameraTitle}>Spotted a stray?</Text>
             <View style={styles.cameraIconCircle}>
     <Image
-      source={require('../../assets/camera.png')}
+      source={require('../../../assets/camera.png')}
       style={styles.cameraIcon}
       resizeMode="contain"
     />
@@ -326,6 +328,25 @@ export default function HomeScreen() {
         <Text style={styles.endMessage}>
           That's all for now. Keep your eyes open for more strays 🐾
         </Text>
+        
+<Pressable
+  onPress={() => {
+    console.log('Create account button pressed');
+    router.push('/register');
+  }}
+  style={{
+    backgroundColor: '#343B2F',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    margin: 20,
+  }}
+>
+  <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+    Create an account
+  </Text>
+</Pressable>
+
       </ScrollView>
 
       <View style={styles.bottomNav}>
@@ -351,6 +372,7 @@ export default function HomeScreen() {
           <Text style={styles.navIcon}>○</Text>
           <Text style={styles.navText}>Profile</Text>
         </Pressable>
+        
       </View>
     </SafeAreaView>
   );
